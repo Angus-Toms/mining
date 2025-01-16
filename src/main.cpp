@@ -42,7 +42,6 @@ public:
 
     void loadExtension() {
         std::string installQry = "INSTALL './mining_extension/build/release/extension/quack/quack.duckdb_extension';";
-        installQry = "Not the correct path lol;";
         std::string loadQry = "LOAD quack;";
 
         auto installResult = conn.Query(installQry);
@@ -50,7 +49,7 @@ public:
 
         if (installResult->HasError() || loadResult->HasError()) {
             std::string loadErrMsg = "\033[1;31mFailed to load mining extension: \033[0m";
-            std::cerr << loadErrMsg << installResult->ToString() << "\n";
+            std::cerr << loadErrMsg << installResult->ToString();
             exit(1);
         }
     }
@@ -66,7 +65,8 @@ public:
         loadQry += "});";
         conn.Query(loadQry);
 
-        conn.Query("SELECT * FROM tbl;")->Print();
+        // Test extension
+        conn.Query("SELECT lift([col0, col1, col2]) FROM tbl;")->Print();
     }
 };
 
