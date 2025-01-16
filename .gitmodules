@@ -1,0 +1,3 @@
+[submodule "mining_extension"]
+	path = mining_extension
+	url = https://github.com/Angus-Toms/mining_extension
