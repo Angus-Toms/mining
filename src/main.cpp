@@ -38,18 +38,18 @@ public:
         // Load extension and CSV
         loadExtension();
         loadCSV();
+
+        computeEntropies();
     }
 
     void loadExtension() {
-        std::string installQry = "INSTALL './mining_extension/build/release/extension/quack/quack.duckdb_extension';";
-        std::string loadQry = "LOAD quack;";
+        std::string loadQry = "LOAD './mining_extension/build/release/extension/quack/quack.duckdb_extension';";
 
-        auto installResult = conn.Query(installQry);
         auto loadResult = conn.Query(loadQry);
 
-        if (installResult->HasError() || loadResult->HasError()) {
+        if (loadResult->HasError()) {
             std::string loadErrMsg = "\033[1;31mFailed to load mining extension: \033[0m";
-            std::cerr << loadErrMsg << installResult->ToString();
+            std::cerr << loadErrMsg << loadResult->ToString();
             exit(1);
         }
     }
@@ -64,14 +64,42 @@ public:
         }
         loadQry += "});";
         conn.Query(loadQry);
+    }
 
-        // Test extension
-        conn.Query("SELECT lift([col0, col1, col2]) FROM tbl;")->Print();
+    std::vector<int> runLevelQuery(std::vector<int> atts, int level) {
+        if (level > atts.size()) {
+            std::cerr << "\033[1;31mLevel exceeds attribute set size, cannot form combinations\033[0m\n";
+        }
+
+        std::string qry = "SELECT prune(custom_sum(lift_exact([";
+        for (const auto& att : atts) {
+            qry += "col" + std::to_string(att);
+            if (att != *atts.rbegin()) {
+                qry += ",";
+            }
+        }
+        qry += "], " + std::to_string(level) + "))) FROM tbl;";
+        conn.Query(qry)->Print();
+        return {0};
+    }
+
+    void computeEntropies() {
+        conn.Query("SELECT DISTINCT ON (function_name) function_name, return_type FROM duckdb_functions() ORDER BY function_name;")->Print();
+
+        std::vector<int> atts;
+        for (int i = 0; i < attributeCount; i++) {
+            atts.push_back(i);
+        }
+        runLevelQuery(atts, 1);
+        runLevelQuery(atts, 2);
+        runLevelQuery(atts, 3);
+        runLevelQuery(atts, 4);
+        runLevelQuery(atts, 5);
     }
 };
 
 int main() {
-    SchemaMiner sm("test.csv", 3);
+    SchemaMiner sm("test.csv", 5);
 
     return 0;
 }
