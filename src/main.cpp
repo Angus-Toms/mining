@@ -3,7 +3,10 @@
 #include <iostream>
 #include <string>
 #include <set>
+#include <unordered_set>
+#include <vector>
 #include <map>
+#include <chrono>
 
 using AttributeSet = std::set<int>;
 
@@ -66,40 +69,38 @@ public:
         conn.Query(loadQry);
     }
 
-    std::vector<int> runLevelQuery(std::vector<int> atts, int level) {
-        if (level > atts.size()) {
-            std::cerr << "\033[1;31mLevel exceeds attribute set size, cannot form combinations\033[0m\n";
-        }
-
-        std::string qry = "SELECT prune(custom_sum(lift_exact([";
-        for (const auto& att : atts) {
-            qry += "col" + std::to_string(att);
-            if (att != *atts.rbegin()) {
-                qry += ",";
-            }
-        }
-        qry += "], " + std::to_string(level) + "))) FROM tbl;";
-        conn.Query(qry)->Print();
-        return {0};
+    std::map<AttributeSet, double> getEntropies() {
+        return entropies;
     }
 
     void computeEntropies() {
-        conn.Query("SELECT DISTINCT ON (function_name) function_name, return_type FROM duckdb_functions() ORDER BY function_name;")->Print();
-
-        std::vector<int> atts;
+        std::string computeQry = "SELECT prune(custom_sum(lift_exact([";
         for (int i = 0; i < attributeCount; i++) {
-            atts.push_back(i);
+            computeQry += "col" + std::to_string(i);
+            if (i != attributeCount - 1) {
+                computeQry += ", ";
+            }
         }
-        runLevelQuery(atts, 1);
-        runLevelQuery(atts, 2);
-        runLevelQuery(atts, 3);
-        runLevelQuery(atts, 4);
-        runLevelQuery(atts, 5);
+        computeQry += "]))) FROM tbl;";
+        bool hasResults = true;
+
+        while (hasResults) {
+            auto entropiesResult = conn.Query(computeQry);
+            auto map = entropiesResult->GetValue(0, 0);
+            auto entryCount = duckdb::MapValue::GetChildren(map).size();
+
+            hasResults = entryCount > 0;
+        }
     }
 };
 
 int main() {
-    SchemaMiner sm("test.csv", 5);
+    auto start = std::chrono::high_resolution_clock::now();
+    SchemaMiner sm("small_flights.csv", 19);
+    auto end = std::chrono::high_resolution_clock::now();
+
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    std::cout << "Runtime: " << duration.count() << "ms\n";
 
     return 0;
 }
