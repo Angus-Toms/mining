@@ -35,7 +35,7 @@ public:
     SchemaMiner(std::string csvPath, int attributeCount) : 
         csvPath(csvPath),
         attributeCount(attributeCount),
-        db(":memory:", initConfig()),
+        db(nullptr, initConfig()),
         conn(db) {
 
         // Load extension and CSV
@@ -96,11 +96,11 @@ public:
 
 int main() {
     auto start = std::chrono::high_resolution_clock::now();
-    SchemaMiner sm("small_flights.csv", 19);
+    SchemaMiner sm("flights.csv", 19);
     auto end = std::chrono::high_resolution_clock::now();
 
-    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    std::cout << "Runtime: " << duration.count() << "ms\n";
+    auto duration = std::chrono::duration_cast<std::chrono::seconds>(end - start);
+    std::cout << "Runtime: " << duration.count() << "s\n";
 
     return 0;
 }
